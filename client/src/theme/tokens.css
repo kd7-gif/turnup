@@ -1,0 +1,32 @@
+/* Turnup "Sunset pop": warm cream, hot orange and cobalt, with a sunshine yellow for highlights. */
+:root {
+  --bg: #fff6ec;            /* page */
+  --card: #ffffff;
+  --surface: #ffefdd;       /* soft panels, chips */
+  --surface-2: #ffe3c6;     /* hover */
+  --line: #f0dcc4;          /* hairlines */
+  --ink: #1a1307;           /* main text */
+  --muted: #6b5a44;         /* supporting text */
+  --faint: #9a8770;         /* captions */
+
+  --orange: #ff5a1f;        /* primary brand and actions */
+  --orange-deep: #d63f06;   /* text-safe orange on cream */
+  --orange-soft: #ffe1d1;
+  --cobalt: #2340ff;        /* secondary accent */
+  --cobalt-deep: #1a2fd1;
+  --cobalt-soft: #e4e8ff;
+  --sun: #ffd23f;           /* highlights, badges */
+  --sun-ink: #4a3300;
+  --success: #0f8a4c;
+  --success-soft: #dcf5e7;
+  --danger: #d92d20;
+
+  --font: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 26px;
+  --shadow: 0 14px 34px -16px rgba(90, 40, 0, 0.28);
+  --max: 1200px;
+  color-scheme: light;
+}

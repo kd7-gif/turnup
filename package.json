@@ -1,0 +1,13 @@
+{
+  "name": "turnup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turnup: discover events, buy tickets, host your own and check guests in with QR codes",
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix client install && npm --prefix server run db:setup",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "test": "npm --prefix server test"
+  },
+  "engines": { "node": ">=20" }
+}
