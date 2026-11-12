@@ -120,7 +120,7 @@ router.get(
     await personalise([event], req.user?.id);
 
     const tiers = await query(
-      `SELECT id, name, description, price, quantity - sold AS remaining, max_per_order, sales_end,
+      `SELECT id, name, description, price, quantity - sold AS remaining, max_per_order, admits, sales_end,
               (sales_end IS NOT NULL AND sales_end <= UTC_TIMESTAMP()) AS sales_ended
        FROM ticket_tiers WHERE event_id = ? ORDER BY position, id`,
       [event.id]

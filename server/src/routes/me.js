@@ -27,4 +27,28 @@ router.get(
   })
 );
 
+// GET /api/me/tickets -> the signed-in user's tickets, grouped by order, upcoming first
+router.get(
+  '/tickets',
+  asyncRoute(async (req, res) => {
+    const orders = await query(
+      `SELECT o.id, o.order_number, o.total, o.paid_at, e.title, e.slug, e.venue, e.area, e.city, e.starts_at, e.ends_at, e.image_url,
+              h.name AS host_name
+       FROM orders o JOIN events e ON e.id = o.event_id JOIN hosts h ON h.id = e.host_id
+       WHERE o.user_id = ? AND o.status = 'paid' ORDER BY e.starts_at`,
+      [req.user.id]
+    );
+    const tickets = orders.length ? await query(
+      `SELECT t.order_id, t.code, t.admits, t.status, tt.name AS tier_name FROM tickets t
+       JOIN ticket_tiers tt ON tt.id = t.tier_id WHERE t.order_id IN (?) ORDER BY t.id`, [orders.map((o) => o.id)]
+    ) : [];
+    const now = new Date();
+    const items = orders.map(({ id, ...o }) => ({ ...o, tickets: tickets.filter((t) => t.order_id === id).map(({ order_id, ...t }) => t) }));
+    res.json({
+      upcoming: items.filter((o) => new Date(o.ends_at) > now),
+      past: items.filter((o) => new Date(o.ends_at) <= now).reverse(),
+    });
+  })
+);
+
 export default router;

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Faces } from '../components/ui/Avatar.jsx';
 import SaveButton from '../components/ui/SaveButton.jsx';
 import { goingText } from '../components/ui/EventCard.jsx';
+import TicketPicker from '../components/ui/TicketPicker.jsx';
 
 export default function EventPage() {
   const { slug } = useParams();
@@ -108,30 +109,15 @@ export default function EventPage() {
           </section>
         </div>
 
-        <aside className="tickets" aria-label="Tickets">
+        <aside className="tickets" id="tickets" aria-label="Tickets">
           <Countdown starts={e.starts_at} ends={e.ends_at} />
           <h2 style={{ fontSize: 22, fontWeight: 800 }}><IconTicket size={22} aria-hidden="true" style={{ verticalAlign: '-4px' }} /> Tickets</h2>
-          <ul className="tier-list">
-            {tiers.map((t) => {
-              const off = t.sold_out || t.sales_ended;
-              return (
-                <li key={t.id} className={`tier ${off ? 'off' : ''}`}>
-                  <strong>{t.name}</strong>
-                  <span className="price">{t.price === 0 ? 'Free' : naira(t.price)}</span>
-                  {t.description && <p>{t.description}</p>}
-                  <div className="tier-tags">
-                    {t.sold_out ? <span className="tag">Sold out</span>
-                      : t.sales_ended ? <span className="tag">Sales ended</span>
-                        : t.remaining <= 25 ? <span className="tag hot">Only {t.remaining} left</span> : null}
-                    {!off && t.sales_end && <span className="tag sun">Ends {dayLabel(t.sales_end)}</span>}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <button type="button" className="btn btn-primary btn-block" disabled>Ticket sales open in the next update</button>
-          <p className="faint small center">Payments are processed securely by Paystack.</p>
+          <TicketPicker event={e} tiers={tiers} ended={new Date(e.ends_at) <= new Date() || e.cancelled} />
         </aside>
+      </div>
+      <div className="ticket-bar">
+        <div><strong>{e.is_free ? 'Free' : e.from_price == null ? 'Sold out' : `From ${naira(e.from_price)}`}</strong><span>{dayLabel(e.starts_at)} · {timeLabel(e.starts_at)}</span></div>
+        <a href="#tickets" className="btn btn-primary">{e.is_free ? 'RSVP' : 'Get tickets'}</a>
       </div>
       {toast && <div className="toast" role="status">{toast}</div>}
     </article>

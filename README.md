@@ -4,7 +4,7 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phase 1 of 7 is complete: browsing, event and host pages, saving and following.
+> Work in progress. Phases 1 and 2 of 7 are complete: browsing, event and host pages, saving, following and ticket checkout.
 
 ## Stack
 
@@ -24,6 +24,12 @@ at the door with QR codes.
 - Event pages with a live countdown, ticket types with early-bird deadlines and tickets left
 - Host pages with follower counts and upcoming events, plus follow and unfollow
 - Save events to a personal list
+- Ticket checkout: choose ticket types and quantities, apply promo codes, then pay with Paystack (or built-in test payments)
+- Free RSVPs confirmed instantly, group tickets and tables that admit several people, early-bird prices that end on a date
+- Prices, discounts and booking fees are always worked out on the server; the browser only sends ticket types and quantities
+- Tickets are issued exactly once per payment, however many times Paystack or the buyer's browser reports it
+- If a ticket type sells out between checkout and payment, the order fails cleanly and nothing is oversold
+- My tickets: festival-style passes with a QR code each, for upcoming and past events
 - Accounts with login protection (rate limiting, same error for wrong email or password, cross-site request blocking)
 
 ## Design
@@ -52,7 +58,7 @@ npm run dev:client    # site on http://localhost:5175
 ```
 
 Every sample account uses the password `turnup123`: `guest@turnup.demo` (has friends going to events) and
-`host@turnup.demo` (runs Afterdark Collective). Running `npm run db:setup` again moves the sample events back into
+`host@turnup.demo` (runs Afterdark Collective). Promo codes to try: `AFTERDARK`, `WATERFRONT10`, `FOODIE15` and `LAUGH50`. Running `npm run db:setup` again moves the sample events back into
 the coming weeks, so they never go out of date.
 
 ## Tests
@@ -64,7 +70,7 @@ npm test
 ## Roadmap
 
 1. ~~Foundation: accounts, events, hosts, browsing, saving and following~~
-2. Tickets: checkout with Paystack, free RSVPs, promo codes and group tickets
+2. ~~Tickets: checkout with Paystack, free RSVPs, promo codes and group tickets~~
 3. Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test
 4. QR tickets and door check-in
 5. Host dashboard: create events, ticket types, sales and co-hosts

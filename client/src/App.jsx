@@ -5,6 +5,8 @@ import Home from './pages/Home.jsx';
 import EventPage from './pages/EventPage.jsx';
 import HostPage from './pages/HostPage.jsx';
 import Saved from './pages/Saved.jsx';
+import Order from './pages/Order.jsx';
+import Tickets from './pages/Tickets.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -25,6 +27,8 @@ export default function App() {
         <Route path="e/:slug" element={<EventPage />} />
         <Route path="h/:slug" element={<HostPage />} />
         <Route path="saved" element={<SignedIn><Saved /></SignedIn>} />
+        <Route path="tickets" element={<SignedIn><Tickets /></SignedIn>} />
+        <Route path="orders/:number" element={<SignedIn><Order /></SignedIn>} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

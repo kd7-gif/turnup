@@ -13,12 +13,16 @@ import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import hostRoutes from './routes/hosts.js';
 import meRoutes from './routes/me.js';
+import orderRoutes from './routes/orders.js';
+import paymentRoutes from './routes/payments.js';
 
 export const app = express();
 
 if (config.isProd) app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: config.clientOrigins, credentials: true }));
+// Paystack's webhook needs the raw request body to check its signature, so it goes before the JSON parser
+app.use('/api/payments', paymentRoutes);
 app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 app.use(readSession);
@@ -39,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/hosts', hostRoutes);
 app.use('/api/me', meRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found.')));
 
 // In production this one server also serves the built React app, so site and API share an address.

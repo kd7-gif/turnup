@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS ticket_tiers (
   quantity      INT NOT NULL,                    -- total available
   sold          INT NOT NULL DEFAULT 0,          -- paid or confirmed
   max_per_order INT NOT NULL DEFAULT 10,
+  admits        INT NOT NULL DEFAULT 1,          -- people one ticket lets in (group tickets, tables)
   sales_end     DATETIME NULL,                   -- early-bird tiers stop selling at this time
   position      INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_tiers_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
@@ -99,4 +100,75 @@ CREATE TABLE IF NOT EXISTS attendees (
   UNIQUE KEY attendee_once (event_id, user_id),
   CONSTRAINT fk_att_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
   CONSTRAINT fk_att_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Discount codes. A code can be for one event or, with event_id empty, for all of a host's events.
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  host_id    INT NOT NULL,
+  event_id   INT NULL,
+  code       VARCHAR(30) NOT NULL,
+  kind       ENUM('percent', 'amount') NOT NULL,
+  value      INT NOT NULL,                 -- percent (1-100) or naira off
+  max_uses   INT NULL,                     -- empty means unlimited
+  used       INT NOT NULL DEFAULT 0,
+  expires_at DATETIME NULL,
+  active     BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE KEY promo_code_per_host (host_id, code),
+  CONSTRAINT fk_promo_host FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_promo_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS orders (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  order_number  VARCHAR(20) NOT NULL UNIQUE,
+  user_id       INT NOT NULL,
+  event_id      INT NOT NULL,
+  status        ENUM('pending', 'paid', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+  subtotal      INT NOT NULL,
+  discount      INT NOT NULL DEFAULT 0,
+  fee           INT NOT NULL DEFAULT 0,
+  total         INT NOT NULL,
+  promo_code_id INT NULL,
+  payment_ref   VARCHAR(100) NULL UNIQUE,
+  failure       VARCHAR(200) NULL,
+  paid_at       DATETIME NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT fk_orders_event FOREIGN KEY (event_id) REFERENCES events(id),
+  CONSTRAINT fk_orders_promo FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE SET NULL,
+  INDEX orders_user_idx (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- What was bought, with the name and price at the time (so later price changes do not rewrite history)
+CREATE TABLE IF NOT EXISTS order_items (
+  id       INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  tier_id  INT NOT NULL,
+  name     VARCHAR(60) NOT NULL,
+  price    INT NOT NULL,
+  quantity INT NOT NULL,
+  admits   INT NOT NULL DEFAULT 1,
+  CONSTRAINT fk_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_items_tier FOREIGN KEY (tier_id) REFERENCES ticket_tiers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One ticket per ticket bought. `code` is the secret printed in the QR code at the door.
+CREATE TABLE IF NOT EXISTS tickets (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  order_id      INT NOT NULL,
+  event_id      INT NOT NULL,
+  tier_id       INT NOT NULL,
+  user_id       INT NOT NULL,
+  code          VARCHAR(40) NOT NULL UNIQUE,
+  admits        INT NOT NULL DEFAULT 1,
+  status        ENUM('valid', 'used', 'cancelled') NOT NULL DEFAULT 'valid',
+  checked_in_at DATETIME NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_tickets_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tickets_event FOREIGN KEY (event_id) REFERENCES events(id),
+  CONSTRAINT fk_tickets_tier FOREIGN KEY (tier_id) REFERENCES ticket_tiers(id),
+  CONSTRAINT fk_tickets_user FOREIGN KEY (user_id) REFERENCES users(id),
+  INDEX tickets_user_idx (user_id),
+  INDEX tickets_event_idx (event_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

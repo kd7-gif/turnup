@@ -17,6 +17,8 @@ const password = process.env.SEED_PASSWORD || 'turnup123';
 export const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const photo = (id) => `/img/events/${id}.webp`;
+// How many people one ticket of this type lets in
+const admitsFor = (name) => (/couple/i.test(name) ? 2 : /cabana/i.test(name) ? 6 : Number(name.match(/\b(\d+)\b/)?.[1]) || 1);
 
 // Lagos is UTC+1 all year. Returns a UTC Date for `days` from today at `hour` Lagos time.
 function lagosTime(days, hour, minute = 0) {
@@ -45,8 +47,14 @@ try {
   if (fresh) {
     console.log('Dropping all tables...');
     await q(`SET FOREIGN_KEY_CHECKS = 0;
-      DROP TABLE IF EXISTS attendees, friendships, host_follows, saved_events, ticket_tiers, events, hosts, users;
+      DROP TABLE IF EXISTS tickets, order_items, orders, promo_codes, attendees, friendships, host_follows, saved_events, ticket_tiers, events, hosts, users;
       SET FOREIGN_KEY_CHECKS = 1;`);
+  }
+  // Columns added after Phase 1, for databases created before them
+  const hasColumn = async (table, column) => (await q(
+    'SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [table, column])).length > 0;
+  if (await hasColumn('ticket_tiers', 'id') && !(await hasColumn('ticket_tiers', 'admits'))) {
+    await q('ALTER TABLE ticket_tiers ADD COLUMN admits INT NOT NULL DEFAULT 1 AFTER max_per_order');
   }
   await q(schema);
   console.log('Tables ready.');
@@ -89,6 +97,7 @@ try {
     if (existing) {
       await q('UPDATE events SET starts_at = ?, ends_at = ?, image_url = ? WHERE id = ?', [starts, ends, photo(e.photo), existing.id]);
       for (const [pos, tier] of e.tiers.entries()) {
+        await q('UPDATE ticket_tiers SET admits = ? WHERE event_id = ? AND position = ?', [admitsFor(tier.name), existing.id, pos]);
         if (tier.earlyBirdEnds != null) {
           await q('UPDATE ticket_tiers SET sales_end = ? WHERE event_id = ? AND position = ?', [lagosTime(tier.earlyBirdEnds, 23, 59), existing.id, pos]);
         }
@@ -120,9 +129,9 @@ try {
       if (sold[i] < e.tiers[i].quantity) sold[i]++;
     }
     for (const [pos, tier] of e.tiers.entries()) {
-      await q(`INSERT INTO ticket_tiers (event_id, name, description, price, quantity, sold, max_per_order, sales_end, position)
-               VALUES (?,?,?,?,?,?,?,?,?)`,
-        [eventId, tier.name, tier.description, tier.price, tier.quantity, sold[pos], tier.price >= 100000 ? 2 : 10,
+      await q(`INSERT INTO ticket_tiers (event_id, name, description, price, quantity, sold, max_per_order, admits, sales_end, position)
+               VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [eventId, tier.name, tier.description, tier.price, tier.quantity, sold[pos], tier.price >= 100000 ? 2 : 10, admitsFor(tier.name),
           tier.earlyBirdEnds != null ? lagosTime(tier.earlyBirdEnds, 23, 59) : null, pos]);
     }
     added++;
@@ -142,10 +151,25 @@ try {
     await q('INSERT IGNORE INTO host_follows (user_id, host_id) VALUES (?, ?)', [guestId, hostIds[slug]]);
   }
 
+  // Promo codes to try at checkout
+  const eventIdOf = async (slug) => (await q('SELECT id FROM events WHERE slug = ?', [slug]))[0]?.id ?? null;
+  const promos = [
+    ['afterdark-collective', null, 'AFTERDARK', 'amount', 2000, null, 60],
+    ['lagos-live-sessions', 'afrobeats-live-at-the-waterfront', 'WATERFRONT10', 'percent', 10, 500, 30],
+    ['eat-drink-lagos', null, 'FOODIE15', 'percent', 15, 200, 45],
+    ['punchline-lagos', 'punchline-live-friday-laughs', 'LAUGH50', 'percent', 50, 5, 20],
+  ];
+  for (const [host, ev, code, kind, value, maxUses, days] of promos) {
+    await q(`INSERT INTO promo_codes (host_id, event_id, code, kind, value, max_uses, expires_at) VALUES (?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)`,
+      [hostIds[host], ev ? await eventIdOf(slugify(ev.replace(/-/g, ' '))) : null, code, kind, value, maxUses, lagosTime(days, 23, 59)]);
+  }
+
   await conn.commit();
   console.log(`Demo accounts (password "${password}"):`);
   console.log(`  guest   ${DEMO_ACCOUNTS.guest.email}`);
   console.log(`  host    ${DEMO_ACCOUNTS.host.email}  (Afterdark Collective)`);
+  console.log('Promo codes: AFTERDARK, WATERFRONT10, FOODIE15, LAUGH50');
   console.log('Done.');
 } catch (err) {
   await conn.rollback().catch(() => {});
