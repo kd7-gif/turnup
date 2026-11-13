@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   admits        INT NOT NULL DEFAULT 1,
   status        ENUM('valid', 'used', 'cancelled') NOT NULL DEFAULT 'valid',
   checked_in_at DATETIME NULL,
+  checked_in_by INT NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_tickets_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   CONSTRAINT fk_tickets_event FOREIGN KEY (event_id) REFERENCES events(id),
@@ -174,4 +175,30 @@ CREATE TABLE IF NOT EXISTS tickets (
   CONSTRAINT fk_tickets_user FOREIGN KEY (user_id) REFERENCES users(id),
   INDEX tickets_user_idx (user_id),
   INDEX tickets_event_idx (event_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- People who help run a host's events: co-hosts manage events, door staff can only check guests in
+CREATE TABLE IF NOT EXISTS host_staff (
+  host_id    INT NOT NULL,
+  user_id    INT NOT NULL,
+  role       ENUM('cohost', 'door') NOT NULL DEFAULT 'door',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (host_id, user_id),
+  CONSTRAINT fk_staff_host FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_staff_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Every scan at the door, including refused ones, for the live check-in dashboard and for disputes
+CREATE TABLE IF NOT EXISTS checkins (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  event_id   INT NOT NULL,
+  ticket_id  INT NULL,
+  staff_id   INT NOT NULL,
+  result     ENUM('admitted', 'already_used', 'wrong_event', 'invalid', 'undone') NOT NULL,
+  admits     INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT fk_checkins_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+  CONSTRAINT fk_checkins_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE SET NULL,
+  CONSTRAINT fk_checkins_staff FOREIGN KEY (staff_id) REFERENCES users(id),
+  INDEX checkins_event_idx (event_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

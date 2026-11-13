@@ -7,6 +7,8 @@ import HostPage from './pages/HostPage.jsx';
 import Saved from './pages/Saved.jsx';
 import Order from './pages/Order.jsx';
 import Tickets from './pages/Tickets.jsx';
+import Door from './pages/Door.jsx';
+import DoorEvent from './pages/DoorEvent.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -29,6 +31,8 @@ export default function App() {
         <Route path="saved" element={<SignedIn><Saved /></SignedIn>} />
         <Route path="tickets" element={<SignedIn><Tickets /></SignedIn>} />
         <Route path="orders/:number" element={<SignedIn><Order /></SignedIn>} />
+        <Route path="door" element={<SignedIn><Door /></SignedIn>} />
+        <Route path="door/:slug" element={<SignedIn><DoorEvent /></SignedIn>} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

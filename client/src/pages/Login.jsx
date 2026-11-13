@@ -46,6 +46,7 @@ export default function Login() {
         <ul>
           <li>Guest: <code>guest@turnup.demo</code></li>
           <li>Host: <code>host@turnup.demo</code></li>
+          <li>Door staff: <code>door@turnup.demo</code></li>
         </ul>
       </details>
     </AuthLayout>

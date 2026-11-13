@@ -5,6 +5,7 @@ export const DEMO_ACCOUNTS = {
   guest: { full_name: 'Ada Okafor', email: 'guest@turnup.demo', phone: '08000000011', city: 'Lagos' },
   host: { full_name: 'Tobi Adeyemi', email: 'host@turnup.demo', phone: '08000000012', city: 'Lagos' },
   admin: { full_name: 'Turnup Admin', email: 'admin@turnup.demo', phone: '08000000013', city: 'Lagos' },
+  door: { full_name: 'Sam Ojo', email: 'door@turnup.demo', phone: '08000000014', city: 'Lagos' },
 };
 
 export const CATEGORIES = ['Music', 'Parties', 'Food and drink', 'Comedy', 'Art and culture', 'Tech and business', 'Fitness', 'Games and hangouts'];

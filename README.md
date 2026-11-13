@@ -4,7 +4,7 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phases 1 to 3 of 7 are complete: browsing, event and host pages, saving, following, ticket checkout and seat-safe sales.
+> Work in progress. Phases 1 to 4 of 7 are complete: browsing, event and host pages, saving, following, ticket checkout, seat-safe sales and QR check-in.
 
 ## Stack
 
@@ -29,6 +29,10 @@ at the door with QR codes.
 - Prices, discounts and booking fees are always worked out on the server; the browser only sends ticket types and quantities
 - Tickets are issued exactly once per payment, however many times Paystack or the buyer's browser reports it
 - My tickets: festival-style passes with a QR code each, for upcoming and past events
+- QR check-in at the door: scan with any phone or laptop camera, type the code, or find guests by name
+- Each ticket admits once, even if two doors scan the same screenshot at the same moment; group tickets admit everyone in one scan
+- Refusals say why: already used (with the time and who let them in), wrong event, or not a real ticket
+- Every scan is logged, door staff only see their host's events, and owners can undo a mistaken check-in
 - Accounts with login protection (rate limiting, same error for wrong email or password, cross-site request blocking)
 
 ## Seat-safe ticket sales
@@ -88,7 +92,7 @@ npm run dev:client    # site on http://localhost:5175
 ```
 
 Every sample account uses the password `turnup123`: `guest@turnup.demo` (has friends going to events) and
-`host@turnup.demo` (runs Afterdark Collective). Promo codes to try: `AFTERDARK`, `WATERFRONT10`, `FOODIE15` and `LAUGH50`. Running `npm run db:setup` again moves the sample events back into
+`host@turnup.demo` (runs Afterdark Collective) and `door@turnup.demo` (door staff for Afterdark Collective). Promo codes to try: `AFTERDARK`, `WATERFRONT10`, `FOODIE15` and `LAUGH50`. Running `npm run db:setup` again moves the sample events back into
 the coming weeks, so they never go out of date.
 
 ## Tests
@@ -102,7 +106,7 @@ npm test
 1. ~~Foundation: accounts, events, hosts, browsing, saving and following~~
 2. ~~Tickets: checkout with Paystack, free RSVPs, promo codes and group tickets~~
 3. ~~Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test~~
-4. QR tickets and door check-in
+4. ~~QR tickets and door check-in~~
 5. Host dashboard: create events, ticket types, sales and co-hosts
 6. Live check-in dashboard
 7. Demo mode, screenshots and launch

@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
 import { config } from '../src/config.js';
@@ -47,7 +48,7 @@ try {
   if (fresh) {
     console.log('Dropping all tables...');
     await q(`SET FOREIGN_KEY_CHECKS = 0;
-      DROP TABLE IF EXISTS tickets, order_items, orders, promo_codes, attendees, friendships, host_follows, saved_events, ticket_tiers, events, hosts, users;
+      DROP TABLE IF EXISTS checkins, host_staff, tickets, order_items, orders, promo_codes, attendees, friendships, host_follows, saved_events, ticket_tiers, events, hosts, users;
       SET FOREIGN_KEY_CHECKS = 1;`);
   }
   // Columns added after Phase 1, for databases created before them
@@ -60,6 +61,9 @@ try {
     await q('ALTER TABLE ticket_tiers ADD COLUMN held INT NOT NULL DEFAULT 0 AFTER sold');
     await q('ALTER TABLE ticket_tiers DROP CONSTRAINT tiers_not_oversold');
     await q('ALTER TABLE ticket_tiers ADD CONSTRAINT tiers_capacity CHECK (sold >= 0 AND held >= 0 AND sold + held <= quantity)');
+  }
+  if (await hasColumn('tickets', 'id') && !(await hasColumn('tickets', 'checked_in_by'))) {
+    await q('ALTER TABLE tickets ADD COLUMN checked_in_by INT NULL AFTER checked_in_at');
   }
   if (await hasColumn('orders', 'id') && !(await hasColumn('orders', 'expires_at'))) {
     await q(`ALTER TABLE orders MODIFY status ENUM('pending', 'paid', 'failed', 'cancelled', 'expired') NOT NULL DEFAULT 'pending',
@@ -80,6 +84,7 @@ try {
   const guestId = await addUser(DEMO_ACCOUNTS.guest, 'guest');
   const hostUserId = await addUser(DEMO_ACCOUNTS.host, 'host');
   await addUser(DEMO_ACCOUNTS.admin, 'admin');
+  const doorId = await addUser(DEMO_ACCOUNTS.door, 'guest');
 
   const guests = [];
   for (const g of SAMPLE_GUESTS) guests.push({ id: await addUser(g, 'guest'), city: g.city });
@@ -160,6 +165,37 @@ try {
     await q('INSERT IGNORE INTO host_follows (user_id, host_id) VALUES (?, ?)', [guestId, hostIds[slug]]);
   }
 
+  // Door staff for the demo host
+  await q("INSERT IGNORE INTO host_staff (host_id, user_id, role) VALUES (?, ?, 'door')", [hostIds['afterdark-collective'], doorId]);
+
+  // Sample guests who are "going" get real paid orders and QR tickets, so guest lists and check-in have people in them.
+  // Each ticket type gets at most as many sample tickets as it has sold, so the numbers always add up.
+  const ALPHA = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const code = (n) => [...crypto.randomBytes(n)].map((b) => ALPHA[b % ALPHA.length]).join('');
+  const needTickets = await q(
+    `SELECT a.event_id, a.user_id FROM attendees a JOIN users u ON u.id = a.user_id
+     WHERE u.email LIKE 'guest-%@turnup.demo' AND NOT EXISTS (SELECT 1 FROM tickets t WHERE t.event_id = a.event_id AND t.user_id = a.user_id)
+     ORDER BY a.event_id, a.id`);
+  let seededTickets = 0;
+  const tiersOf = new Map();
+  for (const { event_id: eid, user_id: uid } of needTickets) {
+    if (!tiersOf.has(eid)) {
+      tiersOf.set(eid, await q(`SELECT t.id, t.name, t.price, t.admits, t.sold - (SELECT COUNT(*) FROM tickets k WHERE k.tier_id = t.id) AS spare
+                                FROM ticket_tiers t WHERE t.event_id = ? ORDER BY t.position`, [eid]));
+    }
+    const tier = tiersOf.get(eid).find((t) => t.spare > 0);
+    if (!tier) continue;
+    tier.spare--;
+    const paidAt = new Date(Date.now() - (1 + (uid % 20)) * 86400000);
+    const fee = tier.price ? Math.min(Math.round(tier.price * 0.025) + 100, 3000) : 0;
+    const o = await q(`INSERT INTO orders (order_number, user_id, event_id, status, subtotal, fee, total, paid_at, created_at)
+                       VALUES (?,?,?, 'paid', ?,?,?,?,?)`, [`TU-${code(6)}`, uid, eid, tier.price, fee, tier.price + fee, paidAt, paidAt]);
+    await q('INSERT INTO order_items (order_id, tier_id, name, price, quantity, admits) VALUES (?,?,?,?,1,?)', [o.insertId, tier.id, tier.name, tier.price, tier.admits]);
+    await q('INSERT INTO tickets (order_id, event_id, tier_id, user_id, code, admits) VALUES (?,?,?,?,?,?)', [o.insertId, eid, tier.id, uid, code(16), tier.admits]);
+    seededTickets++;
+  }
+  if (seededTickets) console.log(`${seededTickets} sample tickets issued to guests who are going.`);
+
   // Promo codes to try at checkout
   const eventIdOf = async (slug) => (await q('SELECT id FROM events WHERE slug = ?', [slug]))[0]?.id ?? null;
   const promos = [
@@ -178,6 +214,7 @@ try {
   console.log(`Demo accounts (password "${password}"):`);
   console.log(`  guest   ${DEMO_ACCOUNTS.guest.email}`);
   console.log(`  host    ${DEMO_ACCOUNTS.host.email}  (Afterdark Collective)`);
+  console.log(`  door    ${DEMO_ACCOUNTS.door.email}  (checks guests in for Afterdark Collective)`);
   console.log('Promo codes: AFTERDARK, WATERFRONT10, FOODIE15, LAUGH50');
   console.log('Done.');
 } catch (err) {
