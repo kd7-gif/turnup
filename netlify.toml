@@ -1,0 +1,14 @@
+# Hosted demo: the React app with its browser-only API (no server or database needed).
+[build]
+  base = "client"
+  command = "npm run build:demo"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Send every page to the app so links like /e/neon-nights-amapiano-edition work on refresh
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

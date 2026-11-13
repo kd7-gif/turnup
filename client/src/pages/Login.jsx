@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthLayout from './AuthLayout.jsx';
 import PasswordField from '../components/ui/PasswordField.jsx';
+import { DEMO } from '../api/client.js';
 
 export default function Login() {
   const { login } = useAuth();
@@ -40,9 +41,9 @@ export default function Login() {
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
         <p className="muted center">New to Turnup? <Link to="/register" state={location.state} className="link">Create an account</Link></p>
       </form>
-      <details className="demo-box">
+      <details className="demo-box" open={DEMO}>
         <summary>Trying the demo?</summary>
-        <p>Every sample account uses the password <code>turnup123</code>.</p>
+        <p>{DEMO ? 'Use the buttons in the dark bar at the top, or log in here. ' : ''}Every sample account uses the password <code>turnup123</code>.</p>
         <ul>
           <li>Guest: <code>guest@turnup.demo</code></li>
           <li>Host: <code>host@turnup.demo</code></li>

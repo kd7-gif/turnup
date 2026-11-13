@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext.jsx';
+import { DEMO } from '../api/client.js';
 
 // One live connection for signed-in hosts and door staff. Pages subscribe to events and refetch what they show.
 const RealtimeContext = createContext({ connected: false, socket: null });
@@ -13,6 +14,12 @@ export function RealtimeProvider({ children }) {
 
   useEffect(() => {
     if (!wanted) return undefined;
+    if (DEMO) {
+      // The demo's stand-in connection: updates travel between this browser's tabs
+      let live = true;
+      import('../demo/server.js').then(({ demoSocket }) => { if (live) { setSocket(demoSocket); setConnected(true); } });
+      return () => { live = false; setSocket(null); setConnected(false); };
+    }
     const s = io({ withCredentials: true, transports: ['websocket', 'polling'] });
     s.on('ready', () => setConnected(true));
     s.on('disconnect', () => setConnected(false));

@@ -2,6 +2,8 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { IconCompass, IconHeart, IconLayoutDashboard, IconScan, IconTicket, IconUser } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../ui/Avatar.jsx';
+import { DEMO } from '../../api/client.js';
+import DemoBar from './DemoBar.jsx';
 
 export function Logo() {
   return <span className="logo">turnup<i>.</i></span>;
@@ -13,6 +15,7 @@ export default function AppShell() {
 
   return (
     <div className="shell">
+      {DEMO && <DemoBar />}
       <header className="topbar">
         <div className="container topbar-inner">
           <Link to="/" className="brand" aria-label="Turnup home"><Logo /></Link>

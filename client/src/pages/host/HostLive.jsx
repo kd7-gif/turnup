@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { IconAlertTriangle, IconArrowLeft, IconBolt, IconCheck, IconFlame, IconShieldX, IconX } from '@tabler/icons-react';
-import { api, timeLabel } from '../../api/client.js';
+import { api, DEMO, timeLabel } from '../../api/client.js';
 import { useLiveEvent } from '../../context/RealtimeContext.jsx';
 import LiveBadge from '../../components/ui/LiveBadge.jsx';
 
@@ -54,7 +54,10 @@ export default function HostLive() {
           <h1 className="ev-title" style={{ fontSize: 'clamp(28px, 4.2vw, 42px)' }}>{event.title}</h1>
           <LiveBadge fallback="Reconnecting… refreshing every 30 seconds meanwhile" />
         </div>
-        <Link to={`/door/${slug}`} className="btn btn-ghost btn-sm">Open the scanner</Link>
+        <div className="ev-actions">
+          {DEMO && <DemoDoor slug={slug} />}
+          <Link to={`/door/${slug}`} className="btn btn-ghost btn-sm">Open the scanner</Link>
+        </div>
       </div>
 
       <div className="live-top">
@@ -155,5 +158,28 @@ function Ring({ pct }) {
       <circle cx="60" cy="60" r={r} className="ring-fill" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
       <text x="60" y="66" textAnchor="middle" className="ring-text">{pct}%</text>
     </svg>
+  );
+}
+
+/** Demo only: play out the doors opening, so visitors can watch the dashboard move on its own. */
+function DemoDoor({ slug }) {
+  const [state, setState] = useState('');
+  const run = async () => {
+    setState('0');
+    const { simulateDoor } = await import('../../demo/server.js');
+    await simulateDoor(slug, { onProgress: (n, total) => setState(`${n} of ${total}`) });
+    setState('done');
+  };
+  const clear = async () => {
+    const { clearDoor } = await import('../../demo/server.js');
+    await clearDoor(slug);
+    setState('');
+  };
+  if (state && state !== 'done') return <span className="btn btn-primary btn-sm" aria-live="polite">Guests arriving… {state}</span>;
+  return (
+    <>
+      <button type="button" className="btn btn-primary btn-sm" onClick={run}><IconBolt size={18} aria-hidden="true" /> Simulate the doors opening</button>
+      {state === 'done' && <button type="button" className="btn btn-ghost btn-sm" onClick={clear}>Clear check-ins</button>}
+    </>
   );
 }

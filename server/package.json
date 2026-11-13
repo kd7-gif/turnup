@@ -11,6 +11,7 @@
     "db:setup": "node scripts/setup-db.js",
     "db:reset": "node scripts/setup-db.js --fresh",
     "load-test": "node scripts/load-test.js",
+    "demo:export": "node scripts/export-demo.js",
     "simulate-door": "node scripts/simulate-door.js",
     "reset-door": "node scripts/reset-door.js",
     "test": "node --test --test-concurrency=1 test/*.test.js"

@@ -525,3 +525,24 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .scan-feed li.already_used .scan-icon, .scan-feed li.wrong_event .scan-icon { background: var(--danger); }
 .scan-feed li.invalid .scan-icon { background: #b45309; }
 .scan-feed li.undone .scan-icon { background: var(--faint); }
+
+/* Hosted demo controls */
+.demo-bar { background: var(--ink); color: #fff; font-size: 14px; }
+.demo-bar-inner { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding-block: 8px; }
+.demo-bar-text { flex: 1 1 300px; min-width: 0; display: flex; gap: 10px; align-items: baseline; }
+.demo-bar-text strong { flex: none; color: var(--sun); text-transform: uppercase; font-size: 12px; letter-spacing: 0.06em; }
+.demo-tip { color: rgba(255, 255, 255, 0.85); }
+.demo-switch { display: inline-flex; background: rgba(255, 255, 255, 0.1); border-radius: 999px; padding: 3px; gap: 2px; }
+.demo-switch button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #fff; font: inherit; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.demo-switch button:hover { background: rgba(255, 255, 255, 0.12); }
+.demo-switch button.on { background: var(--orange); }
+.demo-switch button:focus-visible, .demo-reset:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
+.demo-reset { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255, 255, 255, 0.25); background: transparent; color: #fff; font: inherit; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.demo-reset:hover { background: rgba(255, 255, 255, 0.1); }
+@media (max-width: 640px) {
+  .demo-bar-text { flex-basis: 100%; }
+  .demo-switch { flex: 1; }
+  .demo-switch button { flex: 1; justify-content: center; padding-inline: 8px; }
+  .demo-reset { padding-inline: 10px; }
+  .demo-reset-label { display: none; }
+}

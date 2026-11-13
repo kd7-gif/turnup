@@ -4,7 +4,38 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phases 1 to 6 of 7 are complete: browsing, ticket checkout, seat-safe sales, QR check-in, the host dashboard and live check-in.
+**[Try the live demo](https://turnup-demo.netlify.app)** · no sign-up needed. Use the bar at the top to switch between
+Guest, Host and Door, or open each in its own tab: buy a ticket as a guest, scan it as the door, and watch it land on
+the host's live dashboard.
+
+![Turnup home page](docs/screenshots/home.webp)
+
+| Event page with ticket picker and promo code | Tickets held for 10 minutes at checkout |
+| --- | --- |
+| ![Event page](docs/screenshots/event.webp) | ![Checkout hold](docs/screenshots/hold.webp) |
+| **QR tickets** | **Live check-in dashboard** |
+| ![QR tickets](docs/screenshots/tickets.webp) | ![Live check-in](docs/screenshots/live.webp) |
+| **Host dashboard** | **Per-event sales** |
+| ![Host dashboard](docs/screenshots/host-dashboard.webp) | ![Event sales](docs/screenshots/host-event.webp) |
+
+<p align="center">
+  <img src="docs/screenshots/tickets-phone.webp" alt="My tickets on a phone" width="240">
+  &nbsp;
+  <img src="docs/screenshots/door-admit.webp" alt="Door scanner admitting a guest" width="240">
+  &nbsp;
+  <img src="docs/screenshots/door-used.webp" alt="Door scanner refusing a reused ticket" width="240">
+</p>
+
+## Highlights
+
+- **Never oversells.** Tickets are held for 10 minutes at checkout with one atomic database update. A load test of 500
+  people rushing for 100 tickets sells exactly 100; the naive approach oversells by 552
+- **QR check-in at the door** with any phone camera. Each ticket admits once, even if two doors scan the same screenshot at once
+- **Live check-in dashboard** over WebSockets: arrivals every 15 minutes, refusals and a feed of every scan, updating instantly
+- **Host dashboard**: create events and ticket types, promo codes, door staff and co-hosts, sales charts
+- **Social discovery**: see which friends are going, follow hosts, save events, filter by city, date and category
+- **Real payments** through Paystack, with prices always worked out on the server
+- **51 API tests** across accounts, checkout, holds, check-in, the host dashboard and live updates
 
 ## Stack
 
@@ -16,7 +47,7 @@ at the door with QR codes.
 | Auth | JWT in an httpOnly cookie, bcrypt password hashing, role-based access |
 | Live updates | Socket.IO, authenticated with the same session cookie, one room per host |
 
-## Features so far
+## Features
 
 - 28 sample events from 10 hosts across Lagos, Abuja and Ibadan, with real event photos
 - Browse by city, category and date (today, this weekend, next 7 days), free events only, and search
@@ -78,6 +109,32 @@ When a big show goes on sale, hundreds of people hit "Get tickets" in the same s
 
 Full output: [docs/load-test-results.md](docs/load-test-results.md). Try a bigger run with `npm run load-test -- 1000 150`.
 
+## How the live demo works
+
+The hosted demo has no server or database, so it costs nothing to keep online and never goes to sleep. When the client
+is built with `VITE_DEMO=true`, every API call is answered inside the browser by `client/src/demo/server.js`, which
+follows the same rules as the Express API: server-style pricing, 10-minute holds, single-use tickets and host
+permissions. The sample events, tickets and accounts are exported from MySQL with `npm run demo:export`, keeping
+each event's clock time so a 10pm party is always at 10pm in the coming weeks. Live updates travel between tabs with
+the browser's BroadcastChannel in place of Socket.IO. Anything a visitor does stays in their own browser, and
+**Reset** starts over. The normal build leaves all of this out.
+
+## Project structure
+
+```
+client/          React app (Vite)
+  src/pages/     Discover, event, checkout, tickets, door and host screens
+  src/demo/      Browser-only API used by the hosted demo
+server/          Express API
+  src/routes/    auth, events, hosts, orders, payments, check-in, host dashboard
+  src/services/  pricing, orders and holds, Paystack, permissions
+  src/realtime.js  Socket.IO rooms per host
+  scripts/       database setup, sample data, load test, door simulation, demo export
+  test/          API tests (node:test)
+database/        MySQL schema
+docs/            screenshots and load test results
+```
+
 ## Design
 
 "Sunset pop": warm cream, hot orange and cobalt with a sunshine-yellow accent, set in Bricolage Grotesque.
@@ -113,6 +170,8 @@ With the API running, `npm --prefix server run simulate-door` checks guests in t
 half arrived earlier in the night, the rest arrive one by one over a minute. Open **Host > Neon Nights > Live check-in**
 first to watch it happen. `npm --prefix server run reset-door` clears the check-ins so you can run it again.
 
+To run the browser-only demo locally instead: `cd client && npm run dev:demo`.
+
 ## Tests
 
 ```bash
@@ -127,7 +186,7 @@ npm test
 4. ~~QR tickets and door check-in~~
 5. ~~Host dashboard: create events, ticket types, sales and co-hosts~~
 6. ~~Live check-in dashboard~~
-7. Demo mode, screenshots and launch
+7. ~~Demo mode, screenshots and launch~~
 
 ## Photo credits
 

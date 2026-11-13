@@ -7,7 +7,14 @@ export class ApiError extends Error {
   }
 }
 
+// The hosted demo has no server: the same requests are answered inside the browser (see src/demo).
+export const DEMO = import.meta.env.VITE_DEMO === 'true';
+
 export async function api(path, { method = 'GET', body } = {}) {
+  if (DEMO) {
+    const { demoApi } = await import('../demo/server.js');
+    return demoApi(path, { method, body });
+  }
   let res;
   try {
     res = await fetch(`/api${path}`, {
