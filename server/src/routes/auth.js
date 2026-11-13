@@ -75,8 +75,9 @@ router.get(
       user.hosts = await query('SELECT id, name, slug FROM hosts WHERE owner_id = ? ORDER BY id', [user.id]);
     }
     // Anyone who owns a host or works for one gets the door tools
-    const [staff] = await query('SELECT COUNT(*) AS n FROM host_staff WHERE user_id = ?', [user.id]);
+    const [staff] = await query("SELECT COUNT(*) AS n, SUM(role = 'cohost') AS cohost FROM host_staff WHERE user_id = ?", [user.id]);
     user.can_check_in = user.role === 'admin' || Boolean(user.hosts?.length) || staff.n > 0;
+    user.can_host = user.role === 'admin' || Boolean(user.hosts?.length) || Number(staff.cohost) > 0;
     res.json({ user });
   })
 );

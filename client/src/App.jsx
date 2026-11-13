@@ -9,6 +9,9 @@ import Order from './pages/Order.jsx';
 import Tickets from './pages/Tickets.jsx';
 import Door from './pages/Door.jsx';
 import DoorEvent from './pages/DoorEvent.jsx';
+import HostDashboard from './pages/host/HostDashboard.jsx';
+import HostEvent from './pages/host/HostEvent.jsx';
+import EventEditor from './pages/host/EventEditor.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -33,6 +36,10 @@ export default function App() {
         <Route path="orders/:number" element={<SignedIn><Order /></SignedIn>} />
         <Route path="door" element={<SignedIn><Door /></SignedIn>} />
         <Route path="door/:slug" element={<SignedIn><DoorEvent /></SignedIn>} />
+        <Route path="host" element={<SignedIn><HostDashboard /></SignedIn>} />
+        <Route path="host/new" element={<SignedIn><EventEditor /></SignedIn>} />
+        <Route path="host/e/:slug" element={<SignedIn><HostEvent /></SignedIn>} />
+        <Route path="host/e/:slug/edit" element={<SignedIn><EventEditor /></SignedIn>} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

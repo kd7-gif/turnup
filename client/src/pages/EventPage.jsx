@@ -55,6 +55,8 @@ export default function EventPage() {
   return (
     <article className="container ev-top">
       <Link to="/" className="back"><IconArrowLeft size={18} aria-hidden="true" /> All events</Link>
+      {e.draft && <p className="notice info" style={{ marginTop: 12 }}>This is a preview of a draft. Only you and your co-hosts can see it until you publish.</p>}
+      {e.cancelled && <p className="notice error" style={{ marginTop: 12 }}>This event has been cancelled.</p>}
       <div className="ev-hero">
         <img src={e.image_url} alt={e.title} />
         <span className={`when-pill ${when === 'Happening now' ? 'now' : ''}`}>{when}</span>

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { releaseExpiredHolds } from '../services/orders.js';
+import { roleForEvent } from '../services/access.js';
 import { HttpError, asyncRoute, cleanString } from '../utils/http.js';
 
 const router = Router();
@@ -118,7 +119,10 @@ router.get(
        FROM events e JOIN hosts h ON h.id = e.host_id WHERE e.slug = ?`,
       [cleanString(req.params.slug, 160)]
     );
-    if (!event || event.status === 'draft') throw new HttpError(404, 'We could not find that event.');
+    // Drafts are hidden from everyone except the people running the event, who can preview them
+    if (!event || (event.status === 'draft' && !['owner', 'cohost'].includes(await roleForEvent(req.user, event.id)))) {
+      throw new HttpError(404, 'We could not find that event.');
+    }
     await personalise([event], req.user?.id);
 
     const tiers = await query(
@@ -138,7 +142,7 @@ router.get(
 
     const { host_id, host_bio, host_image, host_followers, host_name, host_slug, host_verified, status, ...rest } = event;
     res.json({
-      event: { ...rest, cancelled: status === 'cancelled' },
+      event: { ...rest, cancelled: status === 'cancelled', draft: status === 'draft' },
       host: { id: host_id, name: host_name, slug: host_slug, verified: host_verified, bio: host_bio, image_url: host_image,
         followers: host_followers, following },
       tiers: tiers.map((t) => ({ ...t, sales_ended: Boolean(t.sales_ended), sold_out: t.remaining <= 0 })),

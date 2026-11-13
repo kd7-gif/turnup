@@ -17,6 +17,7 @@ import meRoutes from './routes/me.js';
 import orderRoutes from './routes/orders.js';
 import paymentRoutes from './routes/payments.js';
 import checkinRoutes from './routes/checkin.js';
+import hostDashboardRoutes from './routes/host.js';
 
 export const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/hosts', hostRoutes);
 app.use('/api/me', meRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkin', checkinRoutes);
+app.use('/api/host', hostDashboardRoutes);
 app.use('/api', (_req, _res, next) => next(new HttpError(404, 'Not found.')));
 
 // In production this one server also serves the built React app, so site and API share an address.

@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { IconCompass, IconHeart, IconScan, IconTicket, IconUser } from '@tabler/icons-react';
+import { IconCompass, IconHeart, IconLayoutDashboard, IconScan, IconTicket, IconUser } from '@tabler/icons-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../ui/Avatar.jsx';
 
@@ -20,6 +20,7 @@ export default function AppShell() {
             <NavLink to="/" end>Discover</NavLink>
             <NavLink to="/tickets">My tickets</NavLink>
             <NavLink to="/saved">Saved</NavLink>
+            {user?.can_host && <NavLink to="/host">Host</NavLink>}
             {user?.can_check_in && <NavLink to="/door">Door</NavLink>}
           </nav>
           <div className="topbar-actions">
@@ -45,7 +46,8 @@ export default function AppShell() {
         <NavLink to="/" end><IconCompass size={24} aria-hidden="true" />Discover</NavLink>
         <NavLink to="/tickets"><IconTicket size={24} aria-hidden="true" />Tickets</NavLink>
         <NavLink to="/saved"><IconHeart size={24} aria-hidden="true" />Saved</NavLink>
-        {user?.can_check_in && <NavLink to="/door"><IconScan size={24} aria-hidden="true" />Door</NavLink>}
+        {user?.can_host && <NavLink to="/host"><IconLayoutDashboard size={24} aria-hidden="true" />Host</NavLink>}
+        {user?.can_check_in && !user?.can_host && <NavLink to="/door"><IconScan size={24} aria-hidden="true" />Door</NavLink>}
         {!user && <NavLink to="/login"><IconUser size={24} aria-hidden="true" />Log in</NavLink>}
       </nav>
 

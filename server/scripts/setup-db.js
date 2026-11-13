@@ -15,8 +15,7 @@ const schema = fs.readFileSync(path.resolve(here, '../../database/schema.sql'), 
 const fresh = process.argv.includes('--fresh');
 const password = process.env.SEED_PASSWORD || 'turnup123';
 
-export const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+import { slugify } from '../src/utils/slug.js';
 const photo = (id) => `/img/events/${id}.webp`;
 // How many people one ticket of this type lets in
 const admitsFor = (name) => (/couple/i.test(name) ? 2 : /cabana/i.test(name) ? 6 : Number(name.match(/\b(\d+)\b/)?.[1]) || 1);

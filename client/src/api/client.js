@@ -53,3 +53,6 @@ export function whenLabel(starts, ends) {
 }
 
 export const priceLabel = (e) => (e.is_free ? 'Free' : e.from_price == null ? 'Sold out' : `From ${naira(e.from_price)}`);
+
+/** A UTC date as the value for a datetime-local input, in Lagos time ("2026-11-20T21:00"). */
+export const toLagosInput = (d) => (d ? new Date(new Date(d).getTime() + 3600000).toISOString().slice(0, 16) : '');

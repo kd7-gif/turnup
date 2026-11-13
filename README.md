@@ -4,7 +4,7 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phases 1 to 4 of 7 are complete: browsing, event and host pages, saving, following, ticket checkout, seat-safe sales and QR check-in.
+> Work in progress. Phases 1 to 5 of 7 are complete: browsing, ticket checkout, seat-safe sales, QR check-in and the host dashboard.
 
 ## Stack
 
@@ -33,6 +33,12 @@ at the door with QR codes.
 - Each ticket admits once, even if two doors scan the same screenshot at the same moment; group tickets admit everyone in one scan
 - Refusals say why: already used (with the time and who let them in), wrong event, or not a real ticket
 - Every scan is logged, door staff only see their host's events, and owners can undo a mistaken check-in
+- Host dashboard: revenue, tickets sold and followers at a glance, every event with a sales bar, and a live feed of sales
+- Create events as drafts (previewable only by the host and co-hosts) and publish when ready; edit, unpublish or cancel
+- Per-event page with a 14-day sales chart, ticket types (add, edit, delete), orders and check-ins
+- Ticket quantities can be changed but never below what is sold or being paid for, enforced in one database statement
+- Promo codes (percent or naira off, per event or for all events, with use limits and end dates) that hosts can switch off
+- Team: owners add door staff (check-in only) or co-hosts (can also run events) by email
 - Accounts with login protection (rate limiting, same error for wrong email or password, cross-site request blocking)
 
 ## Seat-safe ticket sales
@@ -107,7 +113,7 @@ npm test
 2. ~~Tickets: checkout with Paystack, free RSVPs, promo codes and group tickets~~
 3. ~~Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test~~
 4. ~~QR tickets and door check-in~~
-5. Host dashboard: create events, ticket types, sales and co-hosts
+5. ~~Host dashboard: create events, ticket types, sales and co-hosts~~
 6. Live check-in dashboard
 7. Demo mode, screenshots and launch
 
