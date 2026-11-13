@@ -149,17 +149,15 @@ test('people cannot see each other’s orders', async () => {
   assert.equal((await pay(bob, order_number)).status, 404);
 });
 
-test('if tickets run out before payment finishes, the order fails and nothing is oversold', async () => {
-  // Both buyers start checkout while two tickets are left
-  const a = await json(await buy(alice, [{ tier_id: tier['Last two'], quantity: 2 }]));
-  const b = await json(await buy(bob, [{ tier_id: tier['Last two'], quantity: 1 }]));
-  assert.equal((await json(await pay(alice, a.order_number))).order.status, 'paid');
-  const late = (await json(await pay(bob, b.order_number))).order;
-  assert.equal(late.status, 'failed');
-  assert.equal(late.tickets.length, 0);
-  assert.match(late.failure, /sold out/);
-  const [{ sold, quantity }] = await query('SELECT sold, quantity FROM ticket_tiers WHERE id = ?', [tier['Last two']]);
-  assert.equal(sold, quantity);
+test('tickets held by one buyer cannot be bought by another', async () => {
+  const a = await buy(alice, [{ tier_id: tier['Last two'], quantity: 2 }]);
+  assert.equal(a.status, 201);
+  const b = await buy(bob, [{ tier_id: tier['Last two'], quantity: 1 }]);
+  assert.equal(b.status, 409);
+  assert.match((await json(b)).error, /sold out/);
+  assert.equal((await json(await pay(alice, (await json(a)).order_number))).order.status, 'paid');
+  const [{ sold, held, quantity }] = await query('SELECT sold, held, quantity FROM ticket_tiers WHERE id = ?', [tier['Last two']]);
+  assert.deepEqual([sold, held], [quantity, 0]);
 });
 
 test('Paystack webhooks without a valid signature are refused', async () => {

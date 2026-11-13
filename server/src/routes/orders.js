@@ -5,11 +5,13 @@ import { config } from '../config.js';
 import { requireAuth } from '../middleware/auth.js';
 import { HttpError, asyncRoute, cleanString } from '../utils/http.js';
 import { priceOrder } from '../services/pricing.js';
-import { confirmOrder, loadOrder, newOrderNumber } from '../services/orders.js';
+import { cancelOrder, confirmOrder, createOrderWithHold, loadOrder, newOrderNumber, releaseExpiredHolds } from '../services/orders.js';
 import { initializePayment, paystackEnabled, verifyPayment } from '../services/paystack.js';
 
 const router = Router();
-const checkoutLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+// 30 checkouts a minute per account (not per network, so a whole office or campus Wi-Fi can still buy)
+const checkoutLimiter = rateLimit({ windowMs: 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: (req) => `user:${req.user.id}` });
 
 const publicQuote = ({ event, ...q }) => ({ ...q, promo: q.promo && { code: q.promo.code, label: q.promo.label } });
 
@@ -17,6 +19,7 @@ const publicQuote = ({ event, ...q }) => ({ ...q, promo: q.promo && { code: q.pr
 router.post(
   '/quote',
   asyncRoute(async (req, res) => {
+    await releaseExpiredHolds();
     res.json(publicQuote(await priceOrder({ eventSlug: req.body.event_slug, items: req.body.items, promoCode: req.body.promo_code })));
   })
 );
@@ -27,17 +30,11 @@ router.post(
   requireAuth(),
   checkoutLimiter,
   asyncRoute(async (req, res) => {
+    await releaseExpiredHolds();
     const q = await priceOrder({ eventSlug: req.body.event_slug, items: req.body.items, promoCode: req.body.promo_code });
     const order_number = newOrderNumber();
-    const result = await query(
-      `INSERT INTO orders (order_number, user_id, event_id, subtotal, discount, fee, total, promo_code_id) VALUES (?,?,?,?,?,?,?,?)`,
-      [order_number, req.user.id, q.event.id, q.subtotal, q.discount, q.fee, q.total, q.promo?.id ?? null]
-    );
-    const orderId = result.insertId;
-    for (const l of q.lines) {
-      await query('INSERT INTO order_items (order_id, tier_id, name, price, quantity, admits) VALUES (?,?,?,?,?,?)',
-        [orderId, l.tier_id, l.name, l.price, l.quantity, l.admits]);
-    }
+    // Holds the tickets for 10 minutes, or fails with "only N left" if someone got there first
+    const orderId = await createOrderWithHold({ orderNumber: order_number, userId: req.user.id, quote: q });
 
     if (q.total === 0) {
       const status = await confirmOrder(orderId, 0);
@@ -71,6 +68,7 @@ router.get(
   '/:number',
   requireAuth(),
   asyncRoute(async (req, res) => {
+    await releaseExpiredHolds(); // so an order whose hold just ran out shows as expired straight away
     const order = await loadOrder(cleanString(req.params.number, 20), req.user.id);
     if (!order) throw new HttpError(404, 'We could not find that order.');
     res.json({ order, payment_mode: paystackEnabled() ? 'paystack' : 'simulated' });
@@ -91,12 +89,24 @@ router.post(
   })
 );
 
+// POST /api/orders/:number/cancel -> give the held tickets back straight away
+router.post(
+  '/:number/cancel',
+  requireAuth(),
+  asyncRoute(async (req, res) => {
+    const o = await ownOrderId(req.params.number, req.user.id);
+    await cancelOrder(o.id);
+    res.json({ order: await loadOrder(cleanString(req.params.number, 20), req.user.id) });
+  })
+);
+
 // POST /api/orders/:number/simulate-payment -> test payments when Paystack is not set up (never in production with a key)
 router.post(
   '/:number/simulate-payment',
   requireAuth(),
   asyncRoute(async (req, res) => {
     if (paystackEnabled()) throw new HttpError(400, 'Test payments are off because real payments are set up.');
+    await releaseExpiredHolds(); // a test payment after the hold ended behaves like a late real payment
     const o = await ownOrderId(req.params.number, req.user.id);
     await confirmOrder(o.id, o.total);
     res.json({ order: await loadOrder(cleanString(req.params.number, 20), req.user.id) });

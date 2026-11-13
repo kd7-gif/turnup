@@ -20,18 +20,27 @@ export async function query(sql, params = []) {
   return rows;
 }
 
-/** Runs `fn(conn)` inside a transaction and rolls back if it throws. */
-export async function withTransaction(fn) {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    const result = await fn(conn);
-    await conn.commit();
-    return result;
-  } catch (err) {
-    await conn.rollback();
-    throw err;
-  } finally {
-    conn.release();
+const RETRYABLE = new Set(['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT']);
+
+/**
+ * Runs `fn(conn)` inside a transaction and rolls back if it throws. When the database picks this
+ * transaction as the loser of a deadlock (two buyers locking the same rows in a different order),
+ * it is simply run again, up to three times, which is the standard way to handle them.
+ */
+export async function withTransaction(fn, attempts = 3) {
+  for (let attempt = 1; ; attempt++) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const result = await fn(conn);
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback().catch(() => {});
+      if (!RETRYABLE.has(err.code) || attempt >= attempts) throw err;
+      await new Promise((r) => setTimeout(r, 10 * attempt + Math.random() * 20));
+    } finally {
+      conn.release();
+    }
   }
 }

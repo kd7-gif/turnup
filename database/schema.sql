@@ -54,12 +54,13 @@ CREATE TABLE IF NOT EXISTS ticket_tiers (
   price         INT NOT NULL DEFAULT 0,          -- whole naira
   quantity      INT NOT NULL,                    -- total available
   sold          INT NOT NULL DEFAULT 0,          -- paid or confirmed
+  held          INT NOT NULL DEFAULT 0,          -- reserved for buyers who are paying right now (10 minutes)
   max_per_order INT NOT NULL DEFAULT 10,
   admits        INT NOT NULL DEFAULT 1,          -- people one ticket lets in (group tickets, tables)
   sales_end     DATETIME NULL,                   -- early-bird tiers stop selling at this time
   position      INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_tiers_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-  CONSTRAINT tiers_not_oversold CHECK (sold >= 0 AND sold <= quantity)
+  CONSTRAINT tiers_capacity CHECK (sold >= 0 AND held >= 0 AND sold + held <= quantity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS saved_events (
@@ -124,7 +125,7 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number  VARCHAR(20) NOT NULL UNIQUE,
   user_id       INT NOT NULL,
   event_id      INT NOT NULL,
-  status        ENUM('pending', 'paid', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+  status        ENUM('pending', 'paid', 'failed', 'cancelled', 'expired') NOT NULL DEFAULT 'pending',
   subtotal      INT NOT NULL,
   discount      INT NOT NULL DEFAULT 0,
   fee           INT NOT NULL DEFAULT 0,
@@ -133,11 +134,13 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_ref   VARCHAR(100) NULL UNIQUE,
   failure       VARCHAR(200) NULL,
   paid_at       DATETIME NULL,
+  expires_at    DATETIME NULL,                   -- when held tickets go back on sale if unpaid
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id),
   CONSTRAINT fk_orders_event FOREIGN KEY (event_id) REFERENCES events(id),
   CONSTRAINT fk_orders_promo FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE SET NULL,
-  INDEX orders_user_idx (user_id, created_at)
+  INDEX orders_user_idx (user_id, created_at),
+  INDEX orders_expiry_idx (status, expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- What was bought, with the name and price at the time (so later price changes do not rewrite history)

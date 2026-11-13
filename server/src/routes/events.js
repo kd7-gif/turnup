@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { releaseExpiredHolds } from '../services/orders.js';
 import { HttpError, asyncRoute, cleanString } from '../utils/http.js';
 
 const router = Router();
@@ -8,10 +9,10 @@ const router = Router();
 // Card fields plus the numbers every list needs: cheapest ticket, tickets left and people going
 const CARD = `e.id, e.title, e.slug, e.category, e.summary, e.venue, e.area, e.city, e.starts_at, e.ends_at, e.image_url,
   h.name AS host_name, h.slug AS host_slug, h.verified AS host_verified,
-  (SELECT MIN(t.price) FROM ticket_tiers t WHERE t.event_id = e.id AND t.sold < t.quantity
+  (SELECT MIN(t.price) FROM ticket_tiers t WHERE t.event_id = e.id AND t.sold + t.held < t.quantity
      AND (t.sales_end IS NULL OR t.sales_end > UTC_TIMESTAMP())) AS from_price,
   (SELECT MAX(t.price) FROM ticket_tiers t WHERE t.event_id = e.id) AS max_price,
-  (SELECT COALESCE(SUM(t.quantity - t.sold), 0) FROM ticket_tiers t WHERE t.event_id = e.id) AS tickets_left,
+  (SELECT COALESCE(SUM(t.quantity - t.sold - t.held), 0) FROM ticket_tiers t WHERE t.event_id = e.id) AS tickets_left,
   (SELECT COUNT(*) FROM attendees a WHERE a.event_id = e.id) AS going_count`;
 
 const LAGOS_MS = 3600000; // Lagos is UTC+1 all year
@@ -110,6 +111,7 @@ router.get(
 router.get(
   '/:slug',
   asyncRoute(async (req, res) => {
+    await releaseExpiredHolds(); // so "tickets left" never counts abandoned checkouts
     const [event] = await query(
       `SELECT ${CARD}, e.description, e.status, h.id AS host_id, h.bio AS host_bio, h.image_url AS host_image,
               (SELECT COUNT(*) FROM host_follows f WHERE f.host_id = h.id) AS host_followers
@@ -120,7 +122,7 @@ router.get(
     await personalise([event], req.user?.id);
 
     const tiers = await query(
-      `SELECT id, name, description, price, quantity - sold AS remaining, max_per_order, admits, sales_end,
+      `SELECT id, name, description, price, quantity - sold - held AS remaining, held AS in_checkout, max_per_order, admits, sales_end,
               (sales_end IS NOT NULL AND sales_end <= UTC_TIMESTAMP()) AS sales_ended
        FROM ticket_tiers WHERE event_id = ? ORDER BY position, id`,
       [event.id]

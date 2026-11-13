@@ -27,10 +27,10 @@ router.get(
     const events = await query(
       `SELECT e.id, e.title, e.slug, e.category, e.summary, e.venue, e.area, e.city, e.starts_at, e.ends_at, e.image_url,
               ? AS host_name, ? AS host_slug, ? AS host_verified,
-              (SELECT MIN(t.price) FROM ticket_tiers t WHERE t.event_id = e.id AND t.sold < t.quantity
+              (SELECT MIN(t.price) FROM ticket_tiers t WHERE t.event_id = e.id AND t.sold + t.held < t.quantity
                  AND (t.sales_end IS NULL OR t.sales_end > UTC_TIMESTAMP())) AS from_price,
               (SELECT MAX(t.price) FROM ticket_tiers t WHERE t.event_id = e.id) AS max_price,
-              (SELECT COALESCE(SUM(t.quantity - t.sold), 0) FROM ticket_tiers t WHERE t.event_id = e.id) AS tickets_left,
+              (SELECT COALESCE(SUM(t.quantity - t.sold - t.held), 0) FROM ticket_tiers t WHERE t.event_id = e.id) AS tickets_left,
               (SELECT COUNT(*) FROM attendees a WHERE a.event_id = e.id) AS going_count
        FROM events e WHERE e.host_id = ? AND e.status = 'published' AND e.ends_at > UTC_TIMESTAMP() ORDER BY e.starts_at`,
       [host.name, host.slug, host.verified, host.id]

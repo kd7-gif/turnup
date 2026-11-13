@@ -42,7 +42,7 @@ export async function priceOrder({ eventSlug, items, promoCode }) {
   if (!wanted.size) throw new HttpError(422, 'Choose at least one ticket.');
 
   const tiers = await query(
-    `SELECT id, name, price, quantity, sold, max_per_order, admits, sales_end FROM ticket_tiers WHERE event_id = ? AND id IN (?)`,
+    `SELECT id, name, price, quantity, sold, held, max_per_order, admits, sales_end FROM ticket_tiers WHERE event_id = ? AND id IN (?)`,
     [event.id, [...wanted.keys()]]
   );
   if (tiers.length !== wanted.size) throw new HttpError(422, 'Some of those tickets are not for this event. Refresh and try again.');
@@ -51,7 +51,7 @@ export async function priceOrder({ eventSlug, items, promoCode }) {
     const quantity = wanted.get(t.id);
     if (t.sales_end && new Date(t.sales_end) <= new Date()) throw new HttpError(409, `${t.name} tickets are no longer on sale.`);
     if (quantity > t.max_per_order) throw new HttpError(422, `You can buy up to ${t.max_per_order} ${t.name} tickets in one order.`);
-    const left = t.quantity - t.sold;
+    const left = t.quantity - t.sold - t.held;
     if (left <= 0) throw new HttpError(409, `${t.name} is sold out.`);
     if (quantity > left) throw new HttpError(409, `Only ${left} ${t.name} ${left === 1 ? 'ticket is' : 'tickets are'} left.`);
     return { tier_id: t.id, name: t.name, price: t.price, quantity, admits: t.admits };

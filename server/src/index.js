@@ -9,6 +9,7 @@ import { config } from './config.js';
 import { query } from './db.js';
 import { readSession } from './middleware/auth.js';
 import { HttpError } from './utils/http.js';
+import { releaseExpiredHolds } from './services/orders.js';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import hostRoutes from './routes/hosts.js';
@@ -66,4 +67,6 @@ app.use((err, _req, res, _next) => {
 // Start listening only when run directly (tests import `app` without opening a port).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(config.port, () => console.log(`Turnup API running on http://localhost:${config.port}`));
+  // Put unpaid tickets back on sale every 30 seconds
+  setInterval(() => releaseExpiredHolds().catch((err) => console.error('Releasing holds failed:', err.message)), 30000).unref();
 }

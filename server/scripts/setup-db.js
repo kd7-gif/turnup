@@ -56,6 +56,15 @@ try {
   if (await hasColumn('ticket_tiers', 'id') && !(await hasColumn('ticket_tiers', 'admits'))) {
     await q('ALTER TABLE ticket_tiers ADD COLUMN admits INT NOT NULL DEFAULT 1 AFTER max_per_order');
   }
+  if (await hasColumn('ticket_tiers', 'id') && !(await hasColumn('ticket_tiers', 'held'))) {
+    await q('ALTER TABLE ticket_tiers ADD COLUMN held INT NOT NULL DEFAULT 0 AFTER sold');
+    await q('ALTER TABLE ticket_tiers DROP CONSTRAINT tiers_not_oversold');
+    await q('ALTER TABLE ticket_tiers ADD CONSTRAINT tiers_capacity CHECK (sold >= 0 AND held >= 0 AND sold + held <= quantity)');
+  }
+  if (await hasColumn('orders', 'id') && !(await hasColumn('orders', 'expires_at'))) {
+    await q(`ALTER TABLE orders MODIFY status ENUM('pending', 'paid', 'failed', 'cancelled', 'expired') NOT NULL DEFAULT 'pending',
+             ADD COLUMN expires_at DATETIME NULL AFTER paid_at, ADD INDEX orders_expiry_idx (status, expires_at)`);
+  }
   await q(schema);
   console.log('Tables ready.');
 

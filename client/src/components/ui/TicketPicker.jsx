@@ -86,6 +86,7 @@ export default function TicketPicker({ event, tiers, ended }) {
                   {t.sold_out ? <span className="tag">Sold out</span>
                     : t.sales_ended ? <span className="tag">Sales ended</span>
                       : t.remaining <= 25 ? <span className="tag hot">Only {t.remaining} left</span> : null}
+                  {!off && t.in_checkout > 0 && <span className="tag">{t.in_checkout} in checkout now</span>}
                   {!off && t.sales_end && <span className="tag sun">Ends {dayLabel(t.sales_end)}</span>}
                 </div>
               </div>

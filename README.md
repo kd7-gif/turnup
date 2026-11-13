@@ -4,7 +4,7 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phases 1 and 2 of 7 are complete: browsing, event and host pages, saving, following and ticket checkout.
+> Work in progress. Phases 1 to 3 of 7 are complete: browsing, event and host pages, saving, following, ticket checkout and seat-safe sales.
 
 ## Stack
 
@@ -28,9 +28,39 @@ at the door with QR codes.
 - Free RSVPs confirmed instantly, group tickets and tables that admit several people, early-bird prices that end on a date
 - Prices, discounts and booking fees are always worked out on the server; the browser only sends ticket types and quantities
 - Tickets are issued exactly once per payment, however many times Paystack or the buyer's browser reports it
-- If a ticket type sells out between checkout and payment, the order fails cleanly and nothing is oversold
 - My tickets: festival-style passes with a QR code each, for upcoming and past events
 - Accounts with login protection (rate limiting, same error for wrong email or password, cross-site request blocking)
+
+## Seat-safe ticket sales
+
+When a big show goes on sale, hundreds of people hit "Get tickets" in the same second. Turnup holds tickets for
+10 minutes at checkout and can never oversell, even then.
+
+- **Holding is one atomic step.** `UPDATE ticket_tiers SET held = held + n WHERE id = ? AND sold + held + n <= quantity`.
+  The database checks and changes the row while it is locked, so two buyers can never both take the last ticket.
+  A `CHECK (sold + held <= quantity)` constraint backs it up at the database level.
+- **Abandoned checkouts go back on sale.** Unpaid holds expire after 10 minutes. A sweeper runs every 30 seconds
+  (and before anything that reads stock) using `FOR UPDATE SKIP LOCKED`, so it never blocks or fights with an order
+  that is being paid at that moment. Buyers can also cancel and release tickets straight away.
+- **Payments are confirmed exactly once.** The order row is locked, held tickets become sold, and tickets are issued.
+  A payment that arrives after the hold ended still succeeds if tickets are left, and fails with a refund message if not.
+- **Promo codes with limited uses** are reserved the same way, so a 5-use code is never used 6 times.
+- **Deadlocks are retried.** Ticket types are always locked in the same order, and if the database still picks a
+  transaction as a deadlock loser it is retried, which is the standard way to handle them.
+
+`npm run load-test` (in `server`) proves it against the real API and database. Latest run:
+
+| | Result |
+| --- | --- |
+| Buyers rushing at once | 500, wanting 652 tickets for 100 places |
+| Throughput | 388 requests a second on a small cloud machine |
+| Oversold | **0** (100 sold of 100) |
+| Tickets issued vs paid | 100 issued for 100 paid, none twice |
+| Buyers charged without tickets | 0 |
+| Abandoned holds resold | 18 of 18 picked up by people who retried |
+| Naive "check, then update" with the same rush | **oversold by 552 tickets** |
+
+Full output: [docs/load-test-results.md](docs/load-test-results.md). Try a bigger run with `npm run load-test -- 1000 150`.
 
 ## Design
 
@@ -71,7 +101,7 @@ npm test
 
 1. ~~Foundation: accounts, events, hosts, browsing, saving and following~~
 2. ~~Tickets: checkout with Paystack, free RSVPs, promo codes and group tickets~~
-3. Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test
+3. ~~Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test~~
 4. QR tickets and door check-in
 5. Host dashboard: create events, ticket types, sales and co-hosts
 6. Live check-in dashboard

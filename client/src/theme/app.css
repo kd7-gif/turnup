@@ -353,3 +353,12 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 }
 .ticket-groups { display: flex; flex-direction: column; gap: 28px; margin-top: 24px; }
 .ticket-group { display: flex; flex-direction: column; gap: 10px; }
+
+/* Checkout hold timer */
+.hold { display: flex; gap: 12px; align-items: center; background: var(--cobalt-soft); color: var(--cobalt-deep); border-radius: var(--radius-sm); padding: 12px 14px; }
+.hold strong { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.hold span { font-size: 14px; }
+.hold.urgent { background: var(--orange-soft); color: var(--orange-deep); }
+.going-banner.muted-banner { background: var(--card); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.going-banner.muted-banner .going-banner-icon { background: var(--surface-2); color: var(--muted); }
+.going-banner.muted-banner p { color: var(--muted); }
