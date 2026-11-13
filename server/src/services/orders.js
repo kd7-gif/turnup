@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { query, withTransaction } from '../db.js';
 import { HttpError } from '../utils/http.js';
+import { notifySale } from '../realtime.js';
 
 /** How long tickets are held for someone at checkout before they go back on sale. */
 export const HOLD_MINUTES = 10;
@@ -103,7 +104,7 @@ class SoldOut extends Error {}
  */
 export async function confirmOrder(orderId, amountPaid) {
   try {
-    return await withTransaction(async (conn) => {
+    const result = await withTransaction(async (conn) => {
       const [[order]] = await conn.query('SELECT * FROM orders WHERE id = ? FOR UPDATE', [orderId]);
       if (!order || !['pending', 'expired'].includes(order.status)) return 'unchanged';
       if (amountPaid !== order.total) return 'unchanged'; // never accept a different amount from what we charged
@@ -129,6 +130,8 @@ export async function confirmOrder(orderId, amountPaid) {
       await conn.query("UPDATE orders SET status = 'paid', paid_at = UTC_TIMESTAMP() WHERE id = ?", [orderId]);
       return 'paid';
     });
+    if (result === 'paid') notifySale(orderId).catch(() => {}); // after the commit, so listeners see the new numbers
+    return result;
   } catch (err) {
     if (!(err instanceof SoldOut)) throw err;
     await query("UPDATE orders SET status = 'failed', failure = ? WHERE id = ? AND status IN ('pending', 'expired')",

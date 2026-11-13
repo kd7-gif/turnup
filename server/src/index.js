@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -10,6 +11,7 @@ import { query } from './db.js';
 import { readSession } from './middleware/auth.js';
 import { HttpError } from './utils/http.js';
 import { releaseExpiredHolds } from './services/orders.js';
+import { initRealtime } from './realtime.js';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import hostRoutes from './routes/hosts.js';
@@ -68,9 +70,16 @@ app.use((err, _req, res, _next) => {
   });
 });
 
+/** The HTTP server with live updates attached. Tests use this too. */
+export function createServer() {
+  const server = http.createServer(app);
+  initRealtime(server);
+  return server;
+}
+
 // Start listening only when run directly (tests import `app` without opening a port).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  app.listen(config.port, () => console.log(`Turnup API running on http://localhost:${config.port}`));
+  createServer().listen(config.port, () => console.log(`Turnup API running on http://localhost:${config.port}`));
   // Put unpaid tickets back on sale every 30 seconds
   setInterval(() => releaseExpiredHolds().catch((err) => console.error('Releasing holds failed:', err.message)), 30000).unref();
 }

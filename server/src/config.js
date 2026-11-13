@@ -8,7 +8,7 @@ if (isProd && !process.env.JWT_SECRET) {
 
 export const config = {
   isProd,
-  port: Number(process.env.PORT || 5060),
+  port: Number(process.env.PORT || 5080),
   clientOrigins: (process.env.CLIENT_ORIGIN || 'http://localhost:5175').split(',').map((s) => s.trim()),
   jwtSecret: process.env.JWT_SECRET || 'dev-only-secret-change-me',
   db: process.env.DATABASE_URL

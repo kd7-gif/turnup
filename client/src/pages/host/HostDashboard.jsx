@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { IconCash, IconCalendarEvent, IconPlus, IconTicket, IconUsers } from '@tabler/icons-react';
 import { api, dayLabel, naira, timeLabel } from '../../api/client.js';
 import PromoCodes from './PromoCodes.jsx';
+import { useLiveEvent } from '../../context/RealtimeContext.jsx';
+import LiveBadge from '../../components/ui/LiveBadge.jsx';
 import Team from './Team.jsx';
 
 export const STATUS = { published: ['Live', 'live'], draft: ['Draft', 'draft'], cancelled: ['Cancelled', 'cancelled'] };
@@ -14,9 +16,9 @@ export default function HostDashboard() {
   const tab = params.get('tab') || 'events';
   const hostSlug = params.get('host') || '';
 
-  useEffect(() => {
-    api(`/host/overview${hostSlug ? `?host=${hostSlug}` : ''}`).then(setData).catch((e) => setError(e.message));
-  }, [hostSlug]);
+  const load = () => api(`/host/overview${hostSlug ? `?host=${hostSlug}` : ''}`).then(setData).catch((e) => setError(e.message));
+  useEffect(() => { load(); }, [hostSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLiveEvent('sales:changed', () => load()); // a sale anywhere updates the numbers and the feed
 
   if (error) return <div className="container empty"><h1>Host tools</h1><p className="muted">{error}</p></div>;
   if (!data) return <div className="container ev-top"><div className="skeleton" style={{ minHeight: 420 }} /></div>;
@@ -82,6 +84,7 @@ export default function HostDashboard() {
           </section>
           <aside className="panel">
             <h2>Latest sales</h2>
+            <LiveBadge fallback="Refresh to see new sales" />
             {recent.length === 0 ? <p className="muted small">Sales will appear here as they happen.</p> : (
               <ul className="feed">
                 {recent.map((o) => (

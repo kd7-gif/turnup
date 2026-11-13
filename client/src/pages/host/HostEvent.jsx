@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { IconArrowLeft, IconCash, IconEdit, IconExternalLink, IconPlus, IconScan, IconTicket, IconTrash, IconUserCheck } from '@tabler/icons-react';
+import { IconActivityHeartbeat, IconArrowLeft, IconCash, IconEdit, IconExternalLink, IconPlus, IconScan, IconTicket, IconTrash, IconUserCheck } from '@tabler/icons-react';
 import { api, dayLabel, naira, timeLabel } from '../../api/client.js';
 import { Stat, STATUS } from './HostDashboard.jsx';
+import { useLiveEvent } from '../../context/RealtimeContext.jsx';
 
 export default function HostEvent() {
   const { slug } = useParams();
@@ -12,6 +13,9 @@ export default function HostEvent() {
   const [confirm, setConfirm] = useState('');
   const load = useCallback(() => api(`/host/events/${slug}`).then(setData).catch((e) => setError(e.message)), [slug]);
   useEffect(() => { load(); }, [load]);
+  // New sales and check-ins show up without refreshing
+  useLiveEvent('sales:changed', (m) => { if (m.event === slug) load(); });
+  useLiveEvent('checkin:changed', (m) => { if (m.event === slug) load(); });
 
   if (error) return <div className="container empty"><h1>Event not found</h1><p className="muted">{error}</p><Link to="/host" className="btn btn-primary">Dashboard</Link></div>;
   if (!data) return <div className="container ev-top"><div className="skeleton" style={{ minHeight: 420 }} /></div>;
@@ -41,6 +45,7 @@ export default function HostEvent() {
           {e.status !== 'cancelled' && <Link to={`/host/e/${slug}/edit`} className="btn btn-ghost btn-sm"><IconEdit size={18} aria-hidden="true" /> Edit</Link>}
           <Link to={`/e/${slug}`} className="btn btn-ghost btn-sm"><IconExternalLink size={18} aria-hidden="true" /> {e.status === 'draft' ? 'Preview' : 'View'}</Link>
           {e.status === 'published' && <Link to={`/door/${slug}`} className="btn btn-ghost btn-sm"><IconScan size={18} aria-hidden="true" /> Door</Link>}
+          {e.status === 'published' && <Link to={`/host/e/${slug}/live`} className="btn btn-primary btn-sm"><IconActivityHeartbeat size={18} aria-hidden="true" /> Live check-in</Link>}
           {e.status === 'draft' && <button type="button" className="btn btn-primary btn-sm" onClick={() => setStatus('published')}>Publish</button>}
         </div>
       </div>

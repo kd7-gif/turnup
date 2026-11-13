@@ -4,6 +4,7 @@ import {
   IconAlertTriangle, IconArrowLeft, IconCamera, IconCameraOff, IconCheck, IconKeyboard, IconSearch, IconUsers, IconX,
 } from '@tabler/icons-react';
 import { api, timeLabel } from '../api/client.js';
+import { useLiveEvent } from '../context/RealtimeContext.jsx';
 
 const RESULT = {
   admitted: { tone: 'ok', icon: IconCheck, title: (g) => (g.admits > 1 ? `Admit ${g.admits}` : 'Admit') },
@@ -25,6 +26,10 @@ export default function DoorEvent() {
   const clearTimer = useRef(null);
 
   useEffect(() => { api(`/checkin/${slug}`).then(setInfo).catch((e) => setError(e.message)); }, [slug]);
+  // Other doors at the same event: keep the "in" count true for everyone
+  useLiveEvent('checkin:changed', (m) => {
+    if (m.event === slug) api(`/checkin/${slug}`).then((d) => setInfo((i) => (i ? { ...i, counts: d.counts } : d))).catch(() => {});
+  });
 
   const scan = useCallback(async (code) => {
     const now = Date.now();

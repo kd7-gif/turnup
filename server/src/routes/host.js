@@ -209,6 +209,58 @@ router.get(
   })
 );
 
+// GET /api/host/events/:slug/live -> the night-of numbers: who is in, arrivals over time, refusals and the latest scans
+router.get(
+  '/events/:slug/live',
+  asyncRoute(async (req, res) => {
+    const { event } = await eventForStaff(req.user, req.params.slug, ['owner', 'cohost']);
+    const [tiers, arrivals, feed, results, staff] = await Promise.all([
+      query(`SELECT t.name, t.admits, COALESCE(SUM(k.admits), 0) AS expected, COALESCE(SUM(CASE WHEN k.status = 'used' THEN k.admits END), 0) AS checked_in
+             FROM ticket_tiers t LEFT JOIN tickets k ON k.tier_id = t.id AND k.status <> 'cancelled'
+             WHERE t.event_id = ? GROUP BY t.id ORDER BY t.position, t.id`, [event.id]),
+      query("SELECT checked_in_at AS at, admits FROM tickets WHERE event_id = ? AND status = 'used' ORDER BY checked_in_at", [event.id]),
+      query(`SELECT c.id, c.result, c.admits, c.created_at, u.full_name AS guest, tt.name AS tier, s.full_name AS staff
+             FROM checkins c LEFT JOIN tickets t ON t.id = c.ticket_id LEFT JOIN users u ON u.id = t.user_id
+             LEFT JOIN ticket_tiers tt ON tt.id = t.tier_id JOIN users s ON s.id = c.staff_id
+             WHERE c.event_id = ? ORDER BY c.id DESC LIMIT 15`, [event.id]),
+      query('SELECT result, COUNT(*) AS n FROM checkins WHERE event_id = ? GROUP BY result', [event.id]),
+      query(`SELECT s.full_name, SUM(c.admits) AS admitted, COUNT(*) AS scans FROM checkins c JOIN users s ON s.id = c.staff_id
+             WHERE c.event_id = ? AND c.result <> 'undone' GROUP BY c.staff_id ORDER BY admitted DESC`, [event.id]),
+    ]);
+
+    // Arrivals in 15-minute slots, from an hour before doors (or the first arrival, if earlier) up to now
+    const SLOT = 15 * 60000;
+    const now = Date.now();
+    const firstAt = arrivals.length ? new Date(arrivals[0].at).getTime() : Infinity;
+    const lastAt = arrivals.length ? new Date(arrivals.at(-1).at).getTime() : 0;
+    // The chart ends now (or when the event ended) and shows at least two hours, at most twelve
+    const end = Math.floor(Math.max(Math.min(now, new Date(event.ends_at).getTime()), lastAt) / SLOT) * SLOT;
+    let start = Math.floor(Math.min(new Date(event.starts_at).getTime() - 3600000, firstAt, end - 7 * SLOT) / SLOT) * SLOT;
+    start = Math.max(start, end - 47 * SLOT);
+    const shown = [];
+    for (let t = start; t <= end; t += SLOT) shown.push({ at: new Date(t).toISOString(), admits: 0 });
+    for (const a of arrivals) {
+      const i = Math.floor((new Date(a.at).getTime() - start) / SLOT);
+      if (i >= 0 && i < shown.length) shown[i].admits += a.admits;
+    }
+    const lastQuarter = arrivals.filter((a) => now - new Date(a.at) < SLOT).reduce((n, a) => n + a.admits, 0);
+    const byResult = Object.fromEntries(results.map((r) => [r.result, Number(r.n)]));
+    const expected = tiers.reduce((n, t) => n + Number(t.expected), 0);
+    const checkedIn = tiers.reduce((n, t) => n + Number(t.checked_in), 0);
+
+    res.json({
+      event: { title: event.title, slug: event.slug, starts_at: event.starts_at, ends_at: event.ends_at, venue: event.venue },
+      counts: { expected, checked_in: checkedIn, last_15_min: lastQuarter,
+        peak: shown.reduce((best, s) => (s.admits > (best?.admits || 0) ? s : best), null) },
+      tiers, arrivals: shown,
+      refused: { already_used: byResult.already_used || 0, wrong_event: byResult.wrong_event || 0, invalid: byResult.invalid || 0 },
+      staff: staff.map((s) => ({ name: s.full_name, admitted: Number(s.admitted), scans: Number(s.scans) })),
+      feed: feed.map((f) => ({ ...f, staff: f.staff.split(' ')[0] })),
+      server_time: new Date(),
+    });
+  })
+);
+
 // PATCH /api/host/events/:slug -> edit details, or publish, unpublish and cancel
 router.patch(
   '/events/:slug',

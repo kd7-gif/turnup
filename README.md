@@ -4,7 +4,7 @@ Find the move in your city. Turnup is an events and ticketing platform: guests d
 festivals and more, see which friends are going and buy tickets in seconds; hosts sell tickets and check guests in
 at the door with QR codes.
 
-> Work in progress. Phases 1 to 5 of 7 are complete: browsing, ticket checkout, seat-safe sales, QR check-in and the host dashboard.
+> Work in progress. Phases 1 to 6 of 7 are complete: browsing, ticket checkout, seat-safe sales, QR check-in, the host dashboard and live check-in.
 
 ## Stack
 
@@ -14,6 +14,7 @@ at the door with QR codes.
 | Back end | Node.js, Express (ES modules) |
 | Database | MySQL 8 (MariaDB 10.6+ also works) |
 | Auth | JWT in an httpOnly cookie, bcrypt password hashing, role-based access |
+| Live updates | Socket.IO, authenticated with the same session cookie, one room per host |
 
 ## Features so far
 
@@ -39,6 +40,11 @@ at the door with QR codes.
 - Ticket quantities can be changed but never below what is sold or being paid for, enforced in one database statement
 - Promo codes (percent or naira off, per event or for all events, with use limits and end dates) that hosts can switch off
 - Team: owners add door staff (check-in only) or co-hosts (can also run events) by email
+- Live check-in dashboard for the night: people in against expected, arrivals every 15 minutes, check-ins by ticket type,
+  refused scans, the door team's counts and a feed of every scan, all updating instantly over WebSockets
+- Sales and check-ins also update the host dashboard and every door's counter live, with no refreshing
+- Live messages only say which event changed; screens then refetch through the permission-checked API, so no guest
+  details are ever pushed to a browser, and door staff never receive sales figures
 - Accounts with login protection (rate limiting, same error for wrong email or password, cross-site request blocking)
 
 ## Seat-safe ticket sales
@@ -93,13 +99,19 @@ cp server/.env.example server/.env    # then set DB_PASSWORD
 npm run setup
 
 # 4. Start both apps (two terminals)
-npm run dev:server    # API on http://localhost:5060
+npm run dev:server    # API on http://localhost:5080
 npm run dev:client    # site on http://localhost:5175
 ```
 
 Every sample account uses the password `turnup123`: `guest@turnup.demo` (has friends going to events) and
 `host@turnup.demo` (runs Afterdark Collective) and `door@turnup.demo` (door staff for Afterdark Collective). Promo codes to try: `AFTERDARK`, `WATERFRONT10`, `FOODIE15` and `LAUGH50`. Running `npm run db:setup` again moves the sample events back into
 the coming weeks, so they never go out of date.
+
+## Watch the doors open
+
+With the API running, `npm --prefix server run simulate-door` checks guests in to Neon Nights through the real API:
+half arrived earlier in the night, the rest arrive one by one over a minute. Open **Host > Neon Nights > Live check-in**
+first to watch it happen. `npm --prefix server run reset-door` clears the check-ins so you can run it again.
 
 ## Tests
 
@@ -114,7 +126,7 @@ npm test
 3. ~~Seat-safe sales: 10-minute holds and no overselling under heavy load, with a load test~~
 4. ~~QR tickets and door check-in~~
 5. ~~Host dashboard: create events, ticket types, sales and co-hosts~~
-6. Live check-in dashboard
+6. ~~Live check-in dashboard~~
 7. Demo mode, screenshots and launch
 
 ## Photo credits

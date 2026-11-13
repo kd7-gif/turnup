@@ -12,6 +12,7 @@ import DoorEvent from './pages/DoorEvent.jsx';
 import HostDashboard from './pages/host/HostDashboard.jsx';
 import HostEvent from './pages/host/HostEvent.jsx';
 import EventEditor from './pages/host/EventEditor.jsx';
+import HostLive from './pages/host/HostLive.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="host/new" element={<SignedIn><EventEditor /></SignedIn>} />
         <Route path="host/e/:slug" element={<SignedIn><HostEvent /></SignedIn>} />
         <Route path="host/e/:slug/edit" element={<SignedIn><EventEditor /></SignedIn>} />
+        <Route path="host/e/:slug/live" element={<SignedIn><HostLive /></SignedIn>} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="*" element={<NotFound />} />

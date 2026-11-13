@@ -4,6 +4,7 @@ import { query, withTransaction } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { asyncRoute, cleanString, HttpError } from '../utils/http.js';
 import { eventForStaff } from '../services/access.js';
+import { notifyCheckin } from '../realtime.js';
 
 const router = Router();
 router.use(requireAuth());
@@ -72,8 +73,10 @@ router.post(
   asyncRoute(async (req, res) => {
     const { event } = await eventForStaff(req.user, req.params.slug);
     const code = normaliseCode(req.body.code);
-    const log = (result, ticketId = null, admits = 0) =>
-      query('INSERT INTO checkins (event_id, ticket_id, staff_id, result, admits) VALUES (?,?,?,?,?)', [event.id, ticketId, req.user.id, result, admits]);
+    const log = async (result, ticketId = null, admits = 0) => {
+      await query('INSERT INTO checkins (event_id, ticket_id, staff_id, result, admits) VALUES (?,?,?,?,?)', [event.id, ticketId, req.user.id, result, admits]);
+      notifyCheckin(event.id).catch(() => {}); // every screen watching this door updates straight away
+    };
 
     const [ticket] = code.length >= 8 ? await query(
       `SELECT t.id, t.event_id, t.status, t.admits, t.checked_in_at, tt.name AS tier_name, u.full_name, e.title AS event_title,
@@ -124,6 +127,7 @@ router.post(
       return t.id;
     });
     if (!result) throw new HttpError(404, 'That ticket is not checked in for this event.');
+    notifyCheckin(event.id).catch(() => {});
     res.json({ ok: true, counts: await counts(event.id) });
   })
 );
